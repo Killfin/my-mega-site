@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>С любовью сделанный баллистический калькулятор</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        dark: {
+                            900: '#0b0f19',
+                            800: '#111827',
+                            700: '#1f2937',
+                            600: '#374151',
+                            500: '#4b5563'
+                        },
+                        accent: {
+                            500: '#f97316',
+                            600: '#ea580c',
+                            glow: 'rgba(249, 115, 22, 0.4)'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #111827; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #f97316; }
+    </style>
+</head>
+<body class="bg-dark-900 text-gray-100 min-h-screen flex flex-col antialiased">
+
+    <!-- Уведомления -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Шапка -->
+    <header class="bg-dark-800 border-b border-dark-700 sticky top-0 z-40 backdrop-blur-md bg-opacity-90">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-500 to-amber-600 flex items-center justify-center shadow-lg shadow-accent-glow">
+                    <i class="fa-solid fa-crosshairs text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-wide text-white uppercase flex items-center gap-2">
+                        С любовью сделанный баллистический калькулятор <span class="text-accent-500 text-xs px-2 py-0.5 rounded bg-accent-500/10 border border-accent-500/20">RU PRO</span>
+                    </h1>
+                    <p class="text-xs text-gray-400 hidden sm:block">Специально от сына папе с любовью</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button onclick="app.loadPresetDefaults()" class="text-xs bg-dark-700 hover:bg-dark-600 border border-dark-600 px-3 py-2 rounded-lg transition text-gray-300 flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span class="hidden sm:inline">Сбросить</span>
+                </button>
+                <button onclick="app.openSaveModal()" class="text-xs bg-accent-500 hover:bg-accent-600 text-white font-medium px-4 py-2 rounded-lg transition shadow-md shadow-accent-glow flex items-center gap-2">
+                    <i class="fa-solid fa-bookmark"></i>
+                    <span>Сохранить профиль</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Левая колонка: Ввод параметров (5 колонок) -->
+        <div class="lg:col-span-5 space-y-6">
+            
+            <!-- База патронов РФ и профили -->
+            <div class="bg-dark-800 border border-dark-700 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider text-accent-500 flex items-center gap-2">
+                        <i class="fa-solid fa-database"></i> Патроны Барнаул и Кентавр
+                    </h2>
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Каталог патронов</label>
+                        <select id="preset-ammo" onchange="app.applyPreset(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-500 transition">
+                            <option value="">-- Выберите патрон --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-medium text-gray-400">Мой профиль</label>
+                            <button onclick="app.deleteCurrentProfile()" class="text-[10px] text-red-400 hover:underline">Удалить</button>
+                        </div>
+                        <select id="saved-profiles" onchange="app.loadProfile(this.value)" class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-500 transition">
+                            <option value="">-- Сохраненные --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Параметры Оружия и Патрона -->
+            <div class="bg-dark-800 border border-dark-700 rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-accent-500 flex items-center gap-2 pb-2 border-b border-dark-700">
+                    <i class="fa-solid fa-gun"></i> Оружие и Патрон
+                </h2>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Нач. скорость (V₀)</label>
+                        <div class="relative">
+                            <input type="number" id="v0" value="775" step="1" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-3 pr-12 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-3 top-2 text-xs text-gray-500">м/с</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Масса пули</label>
+                        <div class="relative">
+                            <input type="number" id="weight" value="10.9" step="0.1" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-3 pr-12 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-3 top-2 text-xs text-gray-500">гр</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-xs font-medium text-gray-400">Балл. коэф. (BC)</label>
+                            <div class="flex bg-dark-900 p-0.5 rounded border border-dark-600 text-[10px]">
+                                <button type="button" id="bc-g1" onclick="app.setBcModel('G1')" class="px-1.5 py-0.5 rounded bg-accent-500 text-white font-bold transition">G1</button>
+                                <button type="button" id="bc-g7" onclick="app.setBcModel('G7')" class="px-1.5 py-0.5 rounded text-gray-400 transition">G7</button>
+                            </div>
+                        </div>
+                        <input type="number" id="bc" value="0.405" step="0.001" class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Диаметр пули</label>
+                        <div class="relative">
+                            <input type="number" id="caliber" value="7.62" step="0.01" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-3 pr-12 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-3 top-2 text-xs text-gray-500">мм</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Высота прицела</label>
+                        <div class="relative">
+                            <input type="number" id="sight-height" value="5.0" step="0.1" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-3 pr-12 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-3 top-2 text-xs text-gray-500">см</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Дистанция пристрелки</label>
+                        <div class="relative">
+                            <input type="number" id="zero-range" value="100" step="10" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-3 pr-16 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-3 top-2 text-xs text-gray-500">метров</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Условия окружающей среды -->
+            <div class="bg-dark-800 border border-dark-700 rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-accent-500 flex items-center gap-2 pb-2 border-b border-dark-700">
+                    <i class="fa-solid fa-cloud-sun"></i> Метеоусловия
+                </h2>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Температура</label>
+                        <div class="relative">
+                            <input type="number" id="temp" value="15" step="1" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-2 pr-8 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-2 top-2 text-xs text-gray-500">°C</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Давление</label>
+                        <div class="relative">
+                            <input type="number" id="pressure" value="750" step="1" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-2 pr-10 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-2 top-2 text-xs text-gray-500">мм</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Влажность</label>
+                        <div class="relative">
+                            <input type="number" id="humidity" value="50" step="1" min="0" max="100" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-2 pr-8 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-2 top-2 text-xs text-gray-500">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Скорость ветра</label>
+                        <div class="relative">
+                            <input type="number" id="wind-speed" value="4" step="0.5" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-3 pr-12 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                            <span class="absolute right-3 top-2 text-xs text-gray-500">м/с</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Направление ветра</label>
+                        <select id="wind-angle" class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-500">
+                            <option value="90">9:00 / 3:00 (Боковой 90°)</option>
+                            <option value="45">10:30 / 1:30 (Косой 45°)</option>
+                            <option value="0">12:00 (Встречный 0°)</option>
+                            <option value="180">6:00 (Попутный 180°)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Угол места цели (склон)</label>
+                    <div class="relative">
+                        <input type="number" id="target-angle" value="0" step="1" min="-90" max="90" class="w-full bg-dark-900 border border-dark-600 rounded-xl pl-3 pr-12 py-2 text-sm text-white mono focus:outline-none focus:border-accent-500">
+                        <span class="absolute right-3 top-2 text-xs text-gray-500">° (градусов)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Настройки шага дистанций -->
+            <div class="bg-dark-800 border border-dark-700 rounded-2xl p-5 shadow-xl space-y-4">
+                <h2 class="text-sm font-semibold uppercase tracking-wider text-accent-500 flex items-center gap-2 pb-2 border-b border-dark-700">
+                    <i class="fa-solid fa-sliders"></i> Настройки сетки
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Шаг дистанции</label>
+                        <select id="range-step" onchange="app.calculate()" class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-500">
+                            <option value="25">Каждые 25 м</option>
+                            <option value="50" selected>Каждые 50 м</option>
+                            <option value="100">Каждые 100 м</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-400 mb-1">Макс. дистанция</label>
+                        <select id="max-range" onchange="app.calculate()" class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-500">
+                            <option value="500">500 метров</option>
+                            <option value="800">800 метров</option>
+                            <option value="1000" selected>1000 метров</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопка расчета -->
+            <button onclick="app.calculate()" class="w-full bg-gradient-to-r from-accent-500 to-amber-600 hover:from-accent-600 hover:to-amber-700 text-white font-bold py-3.5 px-6 rounded-2xl shadow-lg shadow-accent-glow transition transform active:scale-[0.99] flex items-center justify-center gap-2 text-base">
+                <i class="fa-solid fa-calculator text-lg"></i>
+                <span>Рассчитать поправки</span>
+            </button>
+        </div>
+
+        <!-- Правая колонка: График и Таблица результатов (7 колонок) -->
+        <div class="lg:col-span-7 space-y-6 flex flex-col">
+            
+            <!-- График траектории -->
+            <div class="bg-dark-800 border border-dark-700 rounded-2xl p-5 shadow-xl flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider text-accent-500 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line"></i> Траектория полета пули
+                    </h3>
+                    <div class="text-xs text-gray-400" id="chart-info">Дистанция: 0 - 1000 м (включая 200м)</div>
+                </div>
+                <div class="relative w-full h-64 bg-dark-900 rounded-xl border border-dark-700 overflow-hidden flex items-center justify-center">
+                    <canvas id="trajectory-canvas" class="w-full h-full cursor-crosshair"></canvas>
+                    <div id="canvas-tooltip" class="absolute hidden bg-dark-800 border border-dark-600 text-xs px-2.5 py-1.5 rounded-lg shadow-lg pointer-events-none z-10 mono"></div>
+                </div>
+                <div class="flex items-center justify-center gap-6 mt-3 text-xs text-gray-400">
+                    <div class="flex items-center gap-2"><span class="w-3 h-0.5 bg-accent-500 inline-block"></span> Траектория (см)</div>
+                    <div class="flex items-center gap-2"><span class="w-3 h-0.5 bg-blue-500 inline-block"></span> Линия прицеливания</div>
+                </div>
+            </div>
+
+            <!-- Таблица поправок -->
+            <div class="bg-dark-800 border border-dark-700 rounded-2xl p-5 shadow-xl flex-grow flex flex-col">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+                    <h3 class="text-sm font-semibold uppercase tracking-wider text-accent-500 flex items-center gap-2">
+                        <i class="fa-solid fa-table-cells"></i> Таблица поправок (с 0 до 1000м, включая 200м)
+                    </h3>
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1.5 text-xs text-gray-400">
+                            <span>Шаг клика:</span>
+                            <select id="click-step" onchange="app.setClickStep(this.value)" class="bg-dark-900 border border-dark-700 rounded px-2 py-1 text-white text-xs">
+                                <option value="0.1">0.1 MIL</option>
+                                <option value="0.25">1/4 MOA</option>
+                                <option value="0.5">1/2 MOA</option>
+                            </select>
+                        </div>
+                        <div class="flex bg-dark-900 rounded-lg p-1 border border-dark-700 text-xs">
+                            <button onclick="app.setCorrectionUnit('MIL')" id="unit-mil" class="px-2.5 py-1 rounded bg-accent-500 text-white font-bold transition">MIL</button>
+                            <button onclick="app.setCorrectionUnit('MOA')" id="unit-moa" class="px-2.5 py-1 rounded text-gray-400 transition">MOA</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto flex-grow max-h-[420px]">
+                    <table class="w-full text-left text-xs text-gray-300">
+                        <thead class="bg-dark-900 text-gray-400 uppercase font-semibold sticky top-0 border-b border-dark-700">
+                            <tr>
+                                <th class="p-3">Дист</th>
+                                <th class="p-3">Падение</th>
+                                <th class="p-3" id="th-vert">Вертик.</th>
+                                <th class="p-3">Клики</th>
+                                <th class="p-3" id="th-horiz">Ветер</th>
+                                <th class="p-3">Время</th>
+                                <th class="p-3">Скорость</th>
+                                <th class="p-3">Энергия</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-tbody" class="divide-y divide-dark-700 font-mono">
+                            <!-- Заполняется JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Модальное окно сохранения профиля -->
+    <div id="save-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-dark-800 border border-dark-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <i class="fa-solid fa-bookmark text-accent-500"></i> Сохранить профиль оружия
+            </h3>
+            <p class="text-xs text-gray-400">Введите название для текущих настроек винтовки и патрона.</p>
+            
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1">Имя профиля</label>
+                <input type="text" id="profile-name-input" placeholder="Напр. Лось .308 Win Кентавр SP 10.9г" class="w-full bg-dark-900 border border-dark-600 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-accent-500">
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="app.closeSaveModal()" class="px-4 py-2 rounded-xl bg-dark-700 hover:bg-dark-600 text-gray-300 text-xs font-medium transition">Отмена</button>
+                <button onclick="app.saveCurrentProfile()" class="px-4 py-2 rounded-xl bg-accent-500 hover:bg-accent-600 text-white text-xs font-medium transition shadow-md shadow-accent-glow">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Футер -->
+    <footer class="bg-dark-800 border-t border-dark-700 py-4 mt-8 text-center text-xs text-gray-500">
+        <p>С любовью сделанный баллистический калькулятор • Специально от сына папе с любовью</p>
+    </footer>
+
+    <!-- Скрипт калькулятора -->
+    <script>
+        const PRESETS = [
+            { name: '⭐ Кентавр .308 Win (СП SP 10.9г, томпак)', v0: 775, weight: 10.9, bc: 0.405, bcModel: 'G1', caliber: 7.62, sightHeight: 5.0, zeroRange: 100 },
+            { name: '⭐ Кентавр .308 Win (ФМЖ FMJ 10.9г, томпак)', v0: 770, weight: 10.9, bc: 0.479, bcModel: 'G1', caliber: 7.62, sightHeight: 5.0, zeroRange: 100 },
+            { name: '⭐ Кентавр .308 Win (ХП HP 9.7г)', v0: 815, weight: 9.7, bc: 0.401, bcModel: 'G1', caliber: 7.62, sightHeight: 5.0, zeroRange: 100 },
+            { name: '⭐ Кентавр .223 Rem (ФМЖ FMJ 4.0г)', v0: 890, weight: 4.0, bc: 0.353, bcModel: 'G1', caliber: 5.69, sightHeight: 4.5, zeroRange: 100 },
+            { name: '⭐ Кентавр .223 Rem (СП SP 3.56г)', v0: 930, weight: 3.56, bc: 0.330, bcModel: 'G1', caliber: 5.69, sightHeight: 4.5, zeroRange: 100 },
+            { name: '⭐ Кентавр .243 Win (ФМЖ FMJ 5.8г)', v0: 920, weight: 5.8, bc: 0.380, bcModel: 'G1', caliber: 6.18, sightHeight: 5.0, zeroRange: 100 },
+            { name: '⭐ Кентавр 7.62х39 (ФМЖ FMJ 8.0г, томпак)', v0: 735, weight: 8.0, bc: 0.276, bcModel: 'G1', caliber: 7.92, sightHeight: 5.0, zeroRange: 100 },
+            { name: '⭐ Кентавр 7.62х54R (ФМЖ FMJ 11.5г)', v0: 760, weight: 11.5, bc: 0.467, bcModel: 'G1', caliber: 7.92, sightHeight: 5.5, zeroRange: 100 },
+            { name: '⭐ Кентавр .30-06 Sprg (СП SP 10.9г)', v0: 775, weight: 10.9, bc: 0.364, bcModel: 'G1', caliber: 7.85, sightHeight: 5.5, zeroRange: 100 },
+            { name: 'Барнаул .308 Win (FMJ 9.4г)', v0: 825, weight: 9.4, bc: 0.394, bcModel: 'G1', caliber: 7.62, sightHeight: 5.0, zeroRange: 100 },
+            { name: 'Барнаул 5.45х39 (HP 3.56г)', v0: 915, weight: 3.56, bc: 0.298, bcModel: 'G1', caliber: 5.60, sightHeight: 5.0, zeroRange: 100 },
+            { name: 'Барнаул 7.62х39 (FMJ 8.0г)', v0: 735, weight: 8.0, bc: 0.276, bcModel: 'G1', caliber: 7.92, sightHeight: 5.0, zeroRange: 100 },
+            { name: 'Барнаул 7.62х54R (НПЗ FMJ 13.0г)', v0: 735, weight: 13.0, bc: 0.525, bcModel: 'G1', caliber: 7.92, sightHeight: 5.5, zeroRange: 100 },
+            { name: 'Барнаул .223 Rem (FMJ 3.6г)', v0: 950, weight: 3.6, bc: 0.342, bcModel: 'G1', caliber: 5.69, sightHeight: 4.5, zeroRange: 100 },
+            { name: 'Барнаул 9х19 (FMJ 7.4г Люгер)', v0: 365, weight: 7.4, bc: 0.145, bcModel: 'G1', caliber: 9.01, sightHeight: 3.5, zeroRange: 25 },
+            { name: 'Барнаул 9х39 (СП-5 / ПАБ-9 16.0г)', v0: 295, weight: 16.0, bc: 0.310, bcModel: 'G1', caliber: 9.00, sightHeight: 5.0, zeroRange: 50 },
+            { name: 'Барнаул .366 ТКМ (Гекко 13.5г)', v0: 610, weight: 13.5, bc: 0.195, bcModel: 'G1', caliber: 9.55, sightHeight: 5.0, zeroRange: 75 },
+            { name: 'Барнаул 12 калибр (Пуля Полева-3 28г)', v0: 440, weight: 28.0, bc: 0.065, bcModel: 'G1', caliber: 18.5, sightHeight: 6.0, zeroRange: 50 }
+        ];
+
+        class BallisticApp {
+            constructor() {
+                this.bcModel = 'G1';
+                this.correctionUnit = 'MIL';
+                this.clickStep = 0.1;
+                this.lastResults = [];
+                this.initPresets();
+                this.initProfiles();
+                this.calculate();
+                this.initCanvasEvents();
+            }
+
+            showToast(message, type = 'success') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-xl border text-xs font-medium flex items-center gap-2 transition transform translate-y-2 opacity-0 ${
+                    type === 'success' ? 'bg-dark-800 border-accent-500 text-white shadow-accent-glow' : 'bg-red-950 border-red-600 text-red-200'
+                }`;
+                toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check text-accent-500' : 'fa-circle-exclamation text-red-500'}"></i> ${message}`;
+                container.appendChild(toast);
+                
+                setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+                setTimeout(() => {
+                    toast.classList.add('translate-y-2', 'opacity-0');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+
+            initPresets() {
+                const select = document.getElementById('preset-ammo');
+                PRESETS.forEach((p, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = p.name;
+                    select.appendChild(opt);
+                });
+            }
+
+            applyPreset(idx) {
+                if (idx === "") return;
+                const p = PRESETS[idx];
+                document.getElementById('v0').value = p.v0;
+                document.getElementById('weight').value = p.weight;
+                document.getElementById('bc').value = p.bc;
+                document.getElementById('caliber').value = p.caliber;
+                document.getElementById('sight-height').value = p.sightHeight;
+                document.getElementById('zero-range').value = p.zeroRange;
+                this.setBcModel(p.bcModel);
+                this.calculate();
+                this.showToast(`Патрон выбран: ${p.name}`);
+            }
+
+            setBcModel(model) {
+                this.bcModel = model;
+                document.getElementById('bc-g1').className = model === 'G1' ? 'px-1.5 py-0.5 rounded bg-accent-500 text-white font-bold transition' : 'px-1.5 py-0.5 rounded text-gray-400 transition';
+                document.getElementById('bc-g7').className = model === 'G7' ? 'px-1.5 py-0.5 rounded bg-accent-500 text-white font-bold transition' : 'px-1.5 py-0.5 rounded text-gray-400 transition';
+            }
+
+            setCorrectionUnit(unit) {
+                this.correctionUnit = unit;
+                document.getElementById('unit-mil').className = unit === 'MIL' ? 'px-2.5 py-1 rounded bg-accent-500 text-white font-bold transition' : 'px-2.5 py-1 rounded text-gray-400 transition';
+                document.getElementById('unit-moa').className = unit === 'MOA' ? 'px-2.5 py-1 rounded bg-accent-500 text-white font-bold transition' : 'px-2.5 py-1 rounded text-gray-400 transition';
+                
+                const stepSelect = document.getElementById('click-step');
+                if (unit === 'MIL') {
+                    stepSelect.innerHTML = '<option value="0.1">0.1 MIL</option><option value="0.2">0.2 MIL</option>';
+                    this.clickStep = 0.1;
+                } else {
+                    stepSelect.innerHTML = '<option value="0.25">1/4 MOA</option><option value="0.5">1/2 MOA</option>';
+                    this.clickStep = 0.25;
+                }
+
+                document.getElementById('th-vert').textContent = `Вертик. (${unit})`;
+                this.renderTable();
+            }
+
+            setClickStep(val) {
+                this.clickStep = parseFloat(val);
+                this.renderTable();
+            }
+
+            loadPresetDefaults() {
+                document.getElementById('v0').value = 775;
+                document.getElementById('weight').value = 10.9;
+                document.getElementById('bc').value = 0.405;
+                document.getElementById('caliber').value = 7.62;
+                document.getElementById('sight-height').value = 5.0;
+                document.getElementById('zero-range').value = 100;
+                document.getElementById('temp').value = 15;
+                document.getElementById('pressure').value = 750;
+                document.getElementById('humidity').value = 50;
+                document.getElementById('wind-speed').value = 4;
+                document.getElementById('wind-angle').value = 90;
+                document.getElementById('target-angle').value = 0;
+                document.getElementById('range-step').value = '50';
+                document.getElementById('max-range').value = '1000';
+                document.getElementById('preset-ammo').value = "";
+                this.setBcModel('G1');
+                this.calculate();
+                this.showToast('Параметры сброшены');
+            }
+
+            initProfiles() {
+                const select = document.getElementById('saved-profiles');
+                select.innerHTML = '<option value="">-- Сохраненные --</option>';
+                const profiles = JSON.parse(localStorage.getItem('ballistic_profiles_ru_v2') || '{}');
+                Object.keys(profiles).forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    select.appendChild(opt);
+                });
+            }
+
+            openSaveModal() {
+                document.getElementById('profile-name-input').value = '';
+                document.getElementById('save-modal').classList.remove('hidden');
+            }
+
+            closeSaveModal() {
+                document.getElementById('save-modal').classList.add('hidden');
+            }
+
+            saveCurrentProfile() {
+                const name = document.getElementById('profile-name-input').value.trim();
+                if (!name) {
+                    this.showToast('Введите название профиля!', 'error');
+                    return;
+                }
+
+                const profileData = {
+                    v0: document.getElementById('v0').value,
+                    weight: document.getElementById('weight').value,
+                    bc: document.getElementById('bc').value,
+                    bcModel: this.bcModel,
+                    caliber: document.getElementById('caliber').value,
+                    sightHeight: document.getElementById('sight-height').value,
+                    zeroRange: document.getElementById('zero-range').value,
+                    temp: document.getElementById('temp').value,
+                    pressure: document.getElementById('pressure').value,
+                    humidity: document.getElementById('humidity').value,
+                    windSpeed: document.getElementById('wind-speed').value,
+                    windAngle: document.getElementById('wind-angle').value,
+                    targetAngle: document.getElementById('target-angle').value
+                };
+
+                const profiles = JSON.parse(localStorage.getItem('ballistic_profiles_ru_v2') || '{}');
+                profiles[name] = profileData;
+                localStorage.setItem('ballistic_profiles_ru_v2', JSON.stringify(profiles));
+
+                this.initProfiles();
+                this.closeSaveModal();
+                this.showToast(`Профиль "${name}" сохранен`);
+            }
+
+            loadProfile(name) {
+                if (!name) return;
+                const profiles = JSON.parse(localStorage.getItem('ballistic_profiles_ru_v2') || '{}');
+                const p = profiles[name];
+                if (!p) return;
+
+                document.getElementById('v0').value = p.v0;
+                document.getElementById('weight').value = p.weight;
+                document.getElementById('bc').value = p.bc;
+                document.getElementById('caliber').value = p.caliber;
+                document.getElementById('sight-height').value = p.sightHeight;
+                document.getElementById('zero-range').value = p.zeroRange;
+                document.getElementById('temp').value = p.temp;
+                document.getElementById('pressure').value = p.pressure;
+                document.getElementById('humidity').value = p.humidity;
+                document.getElementById('wind-speed').value = p.windSpeed;
+                document.getElementById('wind-angle').value = p.windAngle;
+                document.getElementById('target-angle').value = p.targetAngle;
+                this.setBcModel(p.bcModel || 'G1');
+
+                this.calculate();
+                this.showToast(`Профиль "${name}" загружен`);
+            }
+
+            deleteCurrentProfile() {
+                const select = document.getElementById('saved-profiles');
+                const name = select.value;
+                if (!name) {
+                    this.showToast('Выберите профиль для удаления', 'error');
+                    return;
+                }
+                const profiles = JSON.parse(localStorage.getItem('ballistic_profiles_ru_v2') || '{}');
+                delete profiles[name];
+                localStorage.setItem('ballistic_profiles_ru_v2', JSON.stringify(profiles));
+                this.initProfiles();
+                this.showToast(`Профиль "${name}" удален`);
+            }
+
+            calculate() {
+                const v0 = parseFloat(document.getElementById('v0').value) || 775;
+                const weight = parseFloat(document.getElementById('weight').value) || 10.9;
+                const bc = parseFloat(document.getElementById('bc').value) || 0.405;
+                const sightHeight = (parseFloat(document.getElementById('sight-height').value) || 5.0) / 100;
+                const zeroRange = parseFloat(document.getElementById('zero-range').value) || 100;
+
+                const temp = parseFloat(document.getElementById('temp').value) || 15;
+                const pressure = parseFloat(document.getElementById('pressure').value) || 750;
+                const windSpeed = parseFloat(document.getElementById('wind-speed').value) || 0;
+                const windAngleDeg = parseFloat(document.getElementById('wind-angle').value) || 90;
+                const targetAngleDeg = parseFloat(document.getElementById('target-angle').value) || 0;
+
+                const rangeStep = parseInt(document.getElementById('range-step').value) || 50;
+                const maxRange = parseInt(document.getElementById('max-range').value) || 1000;
+
+                const airDensityRatio = (pressure / 750) * (288.15 / (273.15 + temp));
+                const targetAngleRad = targetAngleDeg * Math.PI / 180;
+                const windAngleRad = windAngleDeg * Math.PI / 180;
+                const effectiveWind = windSpeed * Math.sin(windAngleRad);
+
+                const distances = [0];
+                for (let d = rangeStep; d <= maxRange; d += rangeStep) {
+                    distances.push(d);
+                }
+                if (!distances.includes(zeroRange) && zeroRange <= maxRange) {
+                    distances.push(zeroRange);
+                    distances.sort((a, b) => a - b);
+                }
+
+                // Гарантированно добавляем 200 метров, если они в пределах макс. дистанции
+                if (200 <= maxRange && !distances.includes(200)) {
+                    distances.push(200);
+                    distances.sort((a, b) => a - b);
+                }
+
+                const massKg = weight / 1000;
+                let zeroAngle = this.findZeroAngle(v0, bc, airDensityRatio, massKg, sightHeight, zeroRange);
+
+                this.lastResults = [];
+                for (let dist of distances) {
+                    const res = this.simulateFlight(dist, v0, bc, airDensityRatio, massKg, sightHeight, zeroAngle, effectiveWind, targetAngleRad);
+                    this.lastResults.push(res);
+                }
+
+                document.getElementById('chart-info').textContent = `Дистанция: 0 - ${maxRange} м (включая 200м)`;
+                this.renderTable();
+                this.renderChart();
+            }
+
+            findZeroAngle(v0, bc, airDensityRatio, massKg, sightHeight, zeroRange) {
+                let angle = 0.001;
+                for (let iter = 0; iter < 10; iter++) {
+                    let yAtZero = this.simulateAtDistance(zeroRange, v0, bc, airDensityRatio, massKg, sightHeight, angle).y;
+                    let error = yAtZero + sightHeight;
+                    if (Math.abs(error) < 0.0001) break;
+                    angle -= error / zeroRange;
+                }
+                return angle;
+            }
+
+            simulateAtDistance(targetDist, v0, bc, airDensityRatio, massKg, sightHeight, initialAngle) {
+                if (targetDist === 0) return { x: 0, y: -sightHeight };
+                let x = 0, y = -sightHeight;
+                let vx = v0 * Math.cos(initialAngle);
+                let vy = v0 * Math.sin(initialAngle);
+                let t = 0, dt = 0.02;
+                while (x < targetDist && t < 10) {
+                    let v = Math.sqrt(vx*vx + vy*vy);
+                    let drag = 0.000015 * (1 / bc) * airDensityRatio * v * v;
+                    vx += (-drag * (vx / v)) * dt;
+                    vy += (-9.81 - drag * (vy / v)) * dt;
+                    x += vx * dt;
+                    y += vy * dt;
+                    t += dt;
+                }
+                return { x, y };
+            }
+
+            simulateFlight(targetDist, v0, bc, airDensityRatio, massKg, sightHeight, initialAngle, effectiveWind, targetAngleRad) {
+                if (targetDist === 0) {
+                    return { dist: 0, dropCm: 0, vertMil: 0, vertMoa: 0, clicks: 0, windCm: 0, windMil: 0, time: 0, speed: v0, energy: 0.5 * massKg * v0 * v0 };
+                }
+
+                let x = 0, y = -sightHeight, z = 0;
+                let vx = v0 * Math.cos(initialAngle);
+                let vy = v0 * Math.sin(initialAngle);
+                let vz = 0;
+                let t = 0, dt = 0.01;
+
+                while (x < targetDist && t < 10) {
+                    let v = Math.sqrt(vx*vx + vy*vy + vz*vz);
+                    let drag = 0.000018 * (1 / bc) * airDensityRatio * v * v;
+                    let ax = -drag * (vx / v);
+                    let ay = -9.81 - drag * (vy / v);
+                    let az = effectiveWind * 0.15 * (1 / bc) * airDensityRatio;
+
+                    vx += ax * dt;
+                    vy += ay * dt;
+                    vz += az * dt;
+                    x += vx * dt;
+                    y += vy * dt;
+                    z += vz * dt;
+                    t += dt;
+                }
+
+                const dropY = y + sightHeight + (targetDist * Math.sin(targetAngleRad));
+                const dropCm = dropY * 100;
+                const windCm = z * 100;
+
+                const vertMil = -(dropCm / (targetDist * 10));
+                const vertMoa = vertMil * 3.43775;
+                const windMil = (windCm / (targetDist * 10));
+
+                let clicksVal = 0;
+                if (this.correctionUnit === 'MIL') {
+                    clicksVal = Math.round(vertMil / this.clickStep);
+                } else {
+                    clicksVal = Math.round(vertMoa / this.clickStep);
+                }
+
+                const speed = Math.sqrt(vx*vx + vy*vy);
+                const energy = 0.5 * massKg * speed * speed;
+
+                return {
+                    dist: targetDist,
+                    dropCm,
+                    vertMil,
+                    vertMoa,
+                    clicks: clicksVal,
+                    windCm,
+                    windMil,
+                    time: t,
+                    speed,
+                    energy
+                };
+            }
+
+            renderTable() {
+                const tbody = document.getElementById('results-tbody');
+                tbody.innerHTML = '';
+
+                this.lastResults.forEach(r => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-dark-700/50 transition';
+                    
+                    const vertVal = this.correctionUnit === 'MIL' ? r.vertMil.toFixed(1) : r.vertMoa.toFixed(1);
+                    const clicksStr = `${r.clicks > 0 ? '+' : ''}${r.clicks} клик`;
+                    const dropColor = r.dropCm > 0 ? 'text-red-400' : (r.dropCm < 0 ? 'text-blue-400' : 'text-gray-300');
+
+                    tr.innerHTML = `
+                        <td class="p-3 font-bold text-white">${r.dist} м</td>
+                        <td class="p-3 ${dropColor}">${r.dropCm > 0 ? '+' : ''}${r.dropCm.toFixed(1)} см</td>
+                        <td class="p-3 text-accent-500 font-bold">${vertVal} ${this.correctionUnit}</td>
+                        <td class="p-3 text-amber-300">${clicksStr}</td>
+                        <td class="p-3 text-cyan-400">${r.windMil.toFixed(1)} MIL</td>
+                        <td class="p-3 text-gray-400">${r.time.toFixed(2)} с</td>
+                        <td class="p-3 text-gray-300">${r.speed.toFixed(0)} м/с</td>
+                        <td class="p-3 text-gray-400">${r.energy.toFixed(0)} Дж</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            renderChart() {
+                const canvas = document.getElementById('trajectory-canvas');
+                const ctx = canvas.getContext('2d');
+                
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * window.devicePixelRatio;
+                canvas.height = rect.height * window.devicePixelRatio;
+                ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+                const width = rect.width;
+                const height = rect.height;
+
+                ctx.clearRect(0, 0, width, height);
+                if (this.lastResults.length === 0) return;
+
+                const maxDist = this.lastResults[this.lastResults.length - 1].dist || 1000;
+                const drops = this.lastResults.map(r => r.dropCm);
+                const minDrop = Math.min(...drops, -50);
+                const maxDrop = Math.max(...drops, 50);
+
+                const getX = (dist) => (dist / maxDist) * (width - 60) + 40;
+                const getY = (drop) => height / 2 - (drop / (maxDrop - minDrop)) * (height - 60);
+
+                ctx.strokeStyle = '#1f2937';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= 4; i++) {
+                    let y = (height / 4) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(40, y);
+                    ctx.lineTo(width - 20, y);
+                    ctx.stroke();
+                }
+
+                ctx.strokeStyle = '#3b82f6';
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(40, height / 2);
+                ctx.lineTo(width - 20, height / 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.strokeStyle = '#f97316';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                this.lastResults.forEach((r, idx) => {
+                    let x = getX(r.dist);
+                    let y = getY(r.dropCm);
+                    if (idx === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+
+            initCanvasEvents() {
+                const canvas = document.getElementById('trajectory-canvas');
+                const tooltip = document.getElementById('canvas-tooltip');
+
+                canvas.addEventListener('mousemove', (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    const mouseX = e.clientX - rect.left;
+                    if (this.lastResults.length === 0) return;
+                    const maxDist = this.lastResults[this.lastResults.length - 1].dist;
+                    const distRatio = (mouseX - 40) / (rect.width - 60);
+                    const targetDist = distRatio * maxDist;
+
+                    let closest = this.lastResults.reduce((prev, curr) => {
+                        return (Math.abs(curr.dist - targetDist) < Math.abs(prev.dist - targetDist) ? curr : prev);
+                    });
+
+                    if (closest && closest.dist >= 0 && closest.dist <= maxDist) {
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = `${Math.min(Math.max(mouseX, 50), rect.width - 120)}px`;
+                        tooltip.style.top = `30px`;
+                        tooltip.innerHTML = `
+                            <div class="font-bold text-accent-500">${closest.dist} м</div>
+                            <div>Падение: ${closest.dropCm.toFixed(1)} см</div>
+                            <div>Поправка: ${closest.vertMil.toFixed(1)} MIL (${closest.clicks} клик)</div>
+                        `;
+                    }
+                });
+
+                canvas.addEventListener('mouseleave', () => {
+                    tooltip.style.display = 'none';
+                });
+            }
+        }
+
+        let app;
+        window.onload = () => {
+            app = new BallisticApp();
+        };
+    </script>
+</body>
+</html>
